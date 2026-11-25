@@ -41,6 +41,13 @@
       background-image: radial-gradient(rgba(26, 26, 26, 0.035) 1px, transparent 0);
       background-size: 24px 24px;
     }
+    .book-spread {
+      background: linear-gradient(90deg, #F6F2EA 0%, #FAF8F5 48%, #EFE9DD 50%, #FAF8F5 52%, #F6F2EA 100%);
+      box-shadow: 0 18px 40px rgba(26, 26, 26, 0.08);
+    }
+    .book-spine-crease {
+      background: linear-gradient(90deg, rgba(26,26,26,0.02) 0%, rgba(26,26,26,0.12) 50%, rgba(26,26,26,0.02) 100%);
+    }
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -164,19 +171,48 @@
       </div>
     </section>
 
-    <!-- Empty Publications Section -->
+    <!-- Book-by-Page Publications Reader Section -->
     <section id="catalog" class="border-b border-hairline py-24">
       <div class="max-w-7xl mx-auto px-6 md:px-12">
         <div class="flex flex-col md:flex-row md:items-end justify-between pb-10 border-b border-hairline gap-4">
           <div>
-            <p class="text-[11px] uppercase tracking-[0.26em] text-antiqueGold mb-2">Archive &amp; Releases</p>
+            <p class="text-[11px] uppercase tracking-[0.26em] text-antiqueGold mb-2">Archive &amp; Book Reader</p>
             <h2 class="font-serif text-4xl md:text-5xl font-normal">Publications</h2>
           </div>
-          <p class="text-xs uppercase tracking-[0.2em] text-mutedInk">0 Titles Listed</p>
+          <div class="flex items-center gap-4">
+            <span id="pageIndicator" class="text-xs uppercase tracking-[0.2em] text-mutedInk">Page 1 of 1</span>
+          </div>
         </div>
 
-        <!-- Clean Empty Publications Container -->
-        <div id="publicationsContainer" class="min-h-[320px] border border-dashed border-hairline bg-parchmentDark/30 mt-12 flex flex-col items-center justify-center text-center p-10">
+        <!-- Open Book Spread -->
+        <div class="mt-12 book-spread border border-hairline relative">
+          <!-- Center Book Spine Crease -->
+          <div class="hidden lg:block book-spine-crease absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 pointer-events-none z-10"></div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 min-h-[420px]">
+            <!-- Left Page -->
+            <div id="leftPage" class="p-8 sm:p-12 border-b lg:border-b-0 lg:border-r border-hairline flex flex-col justify-between">
+            </div>
+
+            <!-- Right Page -->
+            <div id="rightPage" class="p-8 sm:p-12 flex flex-col justify-between">
+            </div>
+          </div>
+
+          <!-- Book Page Navigation Controls -->
+          <div class="border-t border-hairline bg-parchmentDark/60 px-6 sm:px-10 py-4 flex items-center justify-between gap-4">
+            <button id="prevPageBtn" type="button" class="px-5 py-2.5 border border-ink text-ink text-xs uppercase tracking-[0.2em] hover:bg-ink hover:text-parchment transition-colors disabled:opacity-35 disabled:pointer-events-none">
+              &larr; Previous Page
+            </button>
+
+            <span id="pageStatusText" class="font-serif italic text-base text-mutedInk text-center">
+              Open Spread
+            </span>
+
+            <button id="nextPageBtn" type="button" class="px-5 py-2.5 border border-ink text-ink text-xs uppercase tracking-[0.2em] hover:bg-ink hover:text-parchment transition-colors disabled:opacity-35 disabled:pointer-events-none">
+              Next Page &rarr;
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -397,6 +433,123 @@
   <script>
     // Set current year
     document.getElementById('yearSpan').textContent = new Date().getFullYear();
+
+    // Book-by-Page Reader Logic (Add publication entries to `bookPages` as releases are published)
+    const bookPages = [];
+
+    let currentSpreadIndex = 0;
+    const leftPageEl = document.getElementById('leftPage');
+    const rightPageEl = document.getElementById('rightPage');
+    const pageIndicatorEl = document.getElementById('pageIndicator');
+    const pageStatusTextEl = document.getElementById('pageStatusText');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+
+    function renderBookSpread() {
+      const totalPages = bookPages.length;
+
+      if (totalPages === 0) {
+        pageIndicatorEl.textContent = 'Page 0 of 0';
+        pageStatusTextEl.textContent = 'No Pages Published Yet';
+        prevPageBtn.disabled = true;
+        nextPageBtn.disabled = true;
+
+        leftPageEl.innerHTML = `
+          <div class="text-[10px] uppercase tracking-[0.24em] text-mutedInk">Left Leaf &bull; p. —</div>
+          <div class="my-auto py-10 text-center">
+            <p class="font-serif italic text-2xl text-mutedInk/70">Blank Leaf</p>
+          </div>
+          <div class="text-[10px] uppercase tracking-[0.22em] text-mutedInk/70">Parva Via</div>
+        `;
+
+        rightPageEl.innerHTML = `
+          <div class="text-right text-[10px] uppercase tracking-[0.24em] text-mutedInk">Right Leaf &bull; p. —</div>
+          <div class="my-auto py-10 text-center">
+            <p class="font-serif italic text-2xl text-mutedInk/70">Blank Leaf</p>
+          </div>
+          <div class="text-right text-[10px] uppercase tracking-[0.22em] text-mutedInk/70">Little Way College Seminary</div>
+        `;
+        return;
+      }
+
+      const spreads = [];
+      for (let i = 0; i < totalPages; i += 2) {
+        spreads.push({
+          left: bookPages[i] || null,
+          right: bookPages[i + 1] || null
+        });
+      }
+
+      if (currentSpreadIndex >= spreads.length) {
+        currentSpreadIndex = spreads.length - 1;
+      }
+
+      const currentSpread = spreads[currentSpreadIndex];
+      const leftNum = currentSpread.left ? currentSpread.left.pageNumber : '—';
+      const rightNum = currentSpread.right ? currentSpread.right.pageNumber : '—';
+
+      pageIndicatorEl.textContent = `Pages ${leftNum}${currentSpread.right ? `–${rightNum}` : ''} of ${totalPages}`;
+      pageStatusTextEl.textContent = `Spread ${currentSpreadIndex + 1} of ${spreads.length}`;
+
+      prevPageBtn.disabled = currentSpreadIndex === 0;
+      nextPageBtn.disabled = currentSpreadIndex >= spreads.length - 1;
+
+      leftPageEl.innerHTML = currentSpread.left
+        ? `
+          <div class="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-antiqueGold mb-6">
+            <span>${currentSpread.left.category || 'Publication'}</span>
+            <span>p. ${currentSpread.left.pageNumber}</span>
+          </div>
+          <div class="my-auto space-y-4">
+            <h3 class="font-serif text-3xl text-ink">${currentSpread.left.title || ''}</h3>
+            <p class="font-serif text-lg text-mutedInk leading-relaxed whitespace-pre-line">${currentSpread.left.content || ''}</p>
+          </div>
+          <div class="pt-6 mt-6 border-t border-hairline/70 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-mutedInk">
+            <span>${currentSpread.left.author || 'Parva Via'}</span>
+            <span>${currentSpread.left.pageNumber}</span>
+          </div>
+        `
+        : `<div class="my-auto text-center font-serif italic text-xl text-mutedInk/60">End of Leaf</div>`;
+
+      rightPageEl.innerHTML = currentSpread.right
+        ? `
+          <div class="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-antiqueGold mb-6">
+            <span>${currentSpread.right.category || 'Publication'}</span>
+            <span>p. ${currentSpread.right.pageNumber}</span>
+          </div>
+          <div class="my-auto space-y-4">
+            <h3 class="font-serif text-3xl text-ink">${currentSpread.right.title || ''}</h3>
+            <p class="font-serif text-lg text-mutedInk leading-relaxed whitespace-pre-line">${currentSpread.right.content || ''}</p>
+          </div>
+          <div class="pt-6 mt-6 border-t border-hairline/70 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-mutedInk">
+            <span>${currentSpread.right.author || 'Little Way College Seminary'}</span>
+            <span>${currentSpread.right.pageNumber}</span>
+          </div>
+        `
+        : `<div class="my-auto text-center font-serif italic text-xl text-mutedInk/60">End of Folio</div>`;
+    }
+
+    prevPageBtn.addEventListener('click', () => {
+      if (currentSpreadIndex > 0) {
+        currentSpreadIndex -= 1;
+        renderBookSpread();
+      }
+    });
+
+    nextPageBtn.addEventListener('click', () => {
+      const totalSpreads = Math.ceil(bookPages.length / 2);
+      if (currentSpreadIndex < totalSpreads - 1) {
+        currentSpreadIndex += 1;
+        renderBookSpread();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') prevPageBtn.click();
+      if (e.key === 'ArrowRight') nextPageBtn.click();
+    });
+
+    renderBookSpread();
 
     // Shared Backdrop & Drawers
     const drawerBackdrop = document.getElementById('drawerBackdrop');
