@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Paste your Google Search Console HTML tag here (URL prefix: https://lwcs-parva-via-publication.vercel.app/) -->
-  <!-- <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE_HERE" /> -->
   <title>PARVA VIA PUBLICATION — Little Way College Seminary</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -47,8 +45,25 @@
       background: linear-gradient(90deg, #F6F2EA 0%, #FAF8F5 48%, #EFE9DD 50%, #FAF8F5 52%, #F6F2EA 100%);
       box-shadow: 0 18px 40px rgba(26, 26, 26, 0.08);
     }
+    .book-single {
+      background: linear-gradient(180deg, #FCFBF9 0%, #FAF8F5 100%);
+      box-shadow: 0 18px 40px rgba(26, 26, 26, 0.08);
+    }
     .book-spine-crease {
       background: linear-gradient(90deg, rgba(26,26,26,0.02) 0%, rgba(26,26,26,0.12) 50%, rgba(26,26,26,0.02) 100%);
+    }
+    @keyframes pageTurnIn {
+      0% {
+        opacity: 0.25;
+        transform: translateY(6px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .page-turn-anim {
+      animation: pageTurnIn 0.28s ease-out;
     }
     ::-webkit-scrollbar {
       width: 6px;
@@ -127,15 +142,16 @@
           </div>
 
           <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl font-normal leading-[1.05] tracking-tight text-ink">
-            <em class="italic font-normal text-antiqueGold"></em>
+            Parva Via <em class="italic font-normal text-antiqueGold">Publication</em>
           </h1>
 
           <p class="font-serif text-xl md:text-2xl text-mutedInk max-w-2xl leading-relaxed font-normal">
+            An academic and spiritual journal turned page by page—bringing together reflections, vocation stories, poetry, and seminary life.
           </p>
 
           <div class="pt-2 flex flex-wrap items-center gap-4">
             <a href="#catalog" class="px-7 py-3.5 bg-ink text-parchment text-xs uppercase tracking-[0.2em] hover:bg-antiqueGold transition-colors">
-              View Publications
+              Read Page by Page
             </a>
             <a href="#submissions" class="px-7 py-3.5 border border-ink text-ink text-xs uppercase tracking-[0.2em] hover:bg-parchmentDark transition-colors">
               Submit a Manuscript
@@ -181,23 +197,37 @@
             <p class="text-[11px] uppercase tracking-[0.26em] text-antiqueGold mb-2">Archive &amp; Book Reader</p>
             <h2 class="font-serif text-4xl md:text-5xl font-normal">Publications</h2>
           </div>
-          <div class="flex items-center gap-4">
+
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- View Mode Toggle: One Page at a Time vs Two-Page Spread -->
+            <div class="inline-flex border border-hairline bg-parchmentDark/60 p-0.5 text-[10px] uppercase tracking-[0.18em]">
+              <button id="singlePageModeBtn" type="button" class="px-3 py-1.5 bg-ink text-parchment transition-colors">
+                1 Page
+              </button>
+              <button id="spreadModeBtn" type="button" class="px-3 py-1.5 text-mutedInk hover:text-ink transition-colors">
+                2-Page Spread
+              </button>
+            </div>
+
+            <!-- Direct Page Jump -->
+            <label for="pageJumpSelect" class="sr-only">Jump to page</label>
+            <select id="pageJumpSelect" class="bg-parchment border border-hairline px-3 py-1.5 text-xs text-ink focus:outline-none focus:border-ink">
+            </select>
+
             <span id="pageIndicator" class="text-xs uppercase tracking-[0.2em] text-mutedInk">Page 1 of 1</span>
           </div>
         </div>
 
-        <!-- Open Book Spread -->
-        <div class="mt-12 book-spread border border-hairline relative">
-          <!-- Center Book Spine Crease -->
-          <div class="hidden lg:block book-spine-crease absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 pointer-events-none z-10"></div>
+        <!-- Book Reader Container -->
+        <div id="bookContainer" class="mt-12 book-single border border-hairline relative">
+          <!-- Center Book Spine Crease (shown in 2-page spread mode on desktop) -->
+          <div id="bookSpine" class="hidden book-spine-crease absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 pointer-events-none z-10"></div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 min-h-[420px]">
-            <!-- Left Page -->
-            <div id="leftPage" class="p-8 sm:p-12 border-b lg:border-b-0 lg:border-r border-hairline flex flex-col justify-between">
+          <div id="bookGrid" class="grid grid-cols-1 min-h-[460px]">
+            <div id="leftPage" class="p-8 sm:p-12 lg:p-16 flex flex-col justify-between">
             </div>
 
-            <!-- Right Page -->
-            <div id="rightPage" class="p-8 sm:p-12 flex flex-col justify-between">
+            <div id="rightPage" class="hidden p-8 sm:p-12 lg:p-16 flex flex-col justify-between">
             </div>
           </div>
 
@@ -208,7 +238,7 @@
             </button>
 
             <span id="pageStatusText" class="font-serif italic text-base text-mutedInk text-center">
-              Open Spread
+              Page 1
             </span>
 
             <button id="nextPageBtn" type="button" class="px-5 py-2.5 border border-ink text-ink text-xs uppercase tracking-[0.2em] hover:bg-ink hover:text-parchment transition-colors disabled:opacity-35 disabled:pointer-events-none">
@@ -436,122 +466,229 @@
     // Set current year
     document.getElementById('yearSpan').textContent = new Date().getFullYear();
 
-    // Book-by-Page Reader Logic (Add publication entries to `bookPages` as releases are published)
-    const bookPages = [];
+    // Book-by-Page Reader Data: Add or edit objects in `bookPages` for each page of the publication.
+    const bookPages = [
+      {
+        pageNumber: 1,
+        category: 'Editorial',
+        title: 'Walking the Little Way in Daily Study',
+        author: 'Editorial Board',
+        content: 'In the quiet rhythm of seminary life, greatness is often shaped in small, faithful acts—turning a page with attention, listening closely in class, and offering ordinary work with sincerity.'
+      },
+      {
+        pageNumber: 2,
+        category: 'Reflections',
+        title: 'Stillness Between the Bells',
+        author: 'Seminary Contributor',
+        content: 'Between morning prayer and evening study, a brief pause reveals how grace meets us in routine. Every page we write or read is an invitation to pay closer attention to what endures.'
+      }
+    ];
 
-    let currentSpreadIndex = 0;
+    let currentPageIndex = 0; // Used in 1-Page mode (0-based index into bookPages)
+    let currentSpreadIndex = 0; // Used in 2-Page Spread mode
+    let isSpreadMode = false;
+
+    const bookContainerEl = document.getElementById('bookContainer');
+    const bookSpineEl = document.getElementById('bookSpine');
+    const bookGridEl = document.getElementById('bookGrid');
     const leftPageEl = document.getElementById('leftPage');
     const rightPageEl = document.getElementById('rightPage');
     const pageIndicatorEl = document.getElementById('pageIndicator');
     const pageStatusTextEl = document.getElementById('pageStatusText');
+    const pageJumpSelectEl = document.getElementById('pageJumpSelect');
+    const singlePageModeBtn = document.getElementById('singlePageModeBtn');
+    const spreadModeBtn = document.getElementById('spreadModeBtn');
     const prevPageBtn = document.getElementById('prevPageBtn');
     const nextPageBtn = document.getElementById('nextPageBtn');
 
-    function renderBookSpread() {
+    function buildPageMarkup(pageObj, fallbackLabel, sideLabel, alignRight = false) {
+      if (!pageObj) {
+        return `
+          <div class="${alignRight ? 'text-right' : ''} text-[10px] uppercase tracking-[0.24em] text-mutedInk">${sideLabel}</div>
+          <div class="my-auto py-12 text-center">
+            <p class="font-serif italic text-2xl text-mutedInk/70">${fallbackLabel}</p>
+          </div>
+          <div class="${alignRight ? 'text-right' : ''} text-[10px] uppercase tracking-[0.22em] text-mutedInk/70">Parva Via Publication</div>
+        `;
+      }
+
+      return `
+        <div class="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-antiqueGold mb-6">
+          <span>${pageObj.category || 'Publication'}</span>
+          <span>p. ${pageObj.pageNumber}</span>
+        </div>
+        <div class="my-auto space-y-5 max-w-2xl">
+          <h3 class="font-serif text-3xl sm:text-4xl text-ink leading-snug">${pageObj.title || ''}</h3>
+          <p class="font-serif text-lg sm:text-xl text-mutedInk leading-relaxed whitespace-pre-line">${pageObj.content || ''}</p>
+        </div>
+        <div class="pt-6 mt-8 border-t border-hairline/70 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-mutedInk">
+          <span>${pageObj.author || 'Little Way College Seminary'}</span>
+          <span>Page ${pageObj.pageNumber} of ${bookPages.length}</span>
+        </div>
+      `;
+    }
+
+    function syncJumpSelect() {
+      pageJumpSelectEl.innerHTML = '';
+      if (bookPages.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = 'No Pages';
+        pageJumpSelectEl.appendChild(opt);
+        pageJumpSelectEl.disabled = true;
+        return;
+      }
+
+      pageJumpSelectEl.disabled = false;
+      bookPages.forEach((p, idx) => {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = `Go to Page ${p.pageNumber}`;
+        opt.selected = idx === currentPageIndex;
+        pageJumpSelectEl.appendChild(opt);
+      });
+    }
+
+    function triggerPageTurnAnimation() {
+      bookGridEl.classList.remove('page-turn-anim');
+      void bookGridEl.offsetWidth;
+      bookGridEl.classList.add('page-turn-anim');
+    }
+
+    function renderBookView() {
       const totalPages = bookPages.length;
+      syncJumpSelect();
 
       if (totalPages === 0) {
         pageIndicatorEl.textContent = 'Page 0 of 0';
         pageStatusTextEl.textContent = 'No Pages Published Yet';
         prevPageBtn.disabled = true;
         nextPageBtn.disabled = true;
-
-        leftPageEl.innerHTML = `
-          <div class="text-[10px] uppercase tracking-[0.24em] text-mutedInk">Left Leaf &bull; p. —</div>
-          <div class="my-auto py-10 text-center">
-            <p class="font-serif italic text-2xl text-mutedInk/70">Blank Leaf</p>
-          </div>
-          <div class="text-[10px] uppercase tracking-[0.22em] text-mutedInk/70">Parva Via</div>
-        `;
-
-        rightPageEl.innerHTML = `
-          <div class="text-right text-[10px] uppercase tracking-[0.24em] text-mutedInk">Right Leaf &bull; p. —</div>
-          <div class="my-auto py-10 text-center">
-            <p class="font-serif italic text-2xl text-mutedInk/70">Blank Leaf</p>
-          </div>
-          <div class="text-right text-[10px] uppercase tracking-[0.22em] text-mutedInk/70">Little Way College Seminary</div>
-        `;
+        rightPageEl.classList.add('hidden');
+        bookSpineEl.classList.add('hidden');
+        bookGridEl.className = 'grid grid-cols-1 min-h-[460px]';
+        bookContainerEl.className = 'mt-12 book-single border border-hairline relative';
+        leftPageEl.className = 'p-8 sm:p-12 lg:p-16 flex flex-col justify-between';
+        leftPageEl.innerHTML = buildPageMarkup(null, 'Blank Leaf', 'Page —', false);
         return;
       }
 
-      const spreads = [];
-      for (let i = 0; i < totalPages; i += 2) {
-        spreads.push({
-          left: bookPages[i] || null,
-          right: bookPages[i + 1] || null
-        });
+      if (!isSpreadMode) {
+        // True 1-Page-at-a-Time Book Reader
+        if (currentPageIndex < 0) currentPageIndex = 0;
+        if (currentPageIndex >= totalPages) currentPageIndex = totalPages - 1;
+
+        const currentPage = bookPages[currentPageIndex];
+        pageIndicatorEl.textContent = `Page ${currentPage.pageNumber} of ${totalPages}`;
+        pageStatusTextEl.textContent = `Reading Page ${currentPageIndex + 1} of ${totalPages}`;
+        prevPageBtn.disabled = currentPageIndex === 0;
+        nextPageBtn.disabled = currentPageIndex >= totalPages - 1;
+
+        rightPageEl.classList.add('hidden');
+        bookSpineEl.classList.add('hidden');
+        bookGridEl.className = 'grid grid-cols-1 min-h-[460px]';
+        bookContainerEl.className = 'mt-12 book-single border border-hairline relative';
+        leftPageEl.className = 'p-8 sm:p-12 lg:p-16 flex flex-col justify-between';
+        leftPageEl.innerHTML = buildPageMarkup(currentPage, 'Blank Page', `Page ${currentPage.pageNumber}`, false);
+      } else {
+        // Optional 2-Page Spread View
+        const spreads = [];
+        for (let i = 0; i < totalPages; i += 2) {
+          spreads.push({
+            left: bookPages[i] || null,
+            right: bookPages[i + 1] || null
+          });
+        }
+
+        if (currentSpreadIndex < 0) currentSpreadIndex = 0;
+        if (currentSpreadIndex >= spreads.length) currentSpreadIndex = spreads.length - 1;
+
+        const spread = spreads[currentSpreadIndex];
+        const leftNum = spread.left ? spread.left.pageNumber : '—';
+        const rightNum = spread.right ? spread.right.pageNumber : '—';
+
+        pageIndicatorEl.textContent = `Pages ${leftNum}${spread.right ? `–${rightNum}` : ''} of ${totalPages}`;
+        pageStatusTextEl.textContent = `Spread ${currentSpreadIndex + 1} of ${spreads.length}`;
+        prevPageBtn.disabled = currentSpreadIndex === 0;
+        nextPageBtn.disabled = currentSpreadIndex >= spreads.length - 1;
+
+        rightPageEl.classList.remove('hidden');
+        bookSpineEl.classList.remove('hidden');
+        bookGridEl.className = 'grid grid-cols-1 lg:grid-cols-2 min-h-[460px]';
+        bookContainerEl.className = 'mt-12 book-spread border border-hairline relative';
+        leftPageEl.className = 'p-8 sm:p-12 border-b lg:border-b-0 lg:border-r border-hairline flex flex-col justify-between';
+        rightPageEl.className = 'p-8 sm:p-12 flex flex-col justify-between';
+
+        leftPageEl.innerHTML = buildPageMarkup(spread.left, 'End of Leaf', `Left Leaf • p. ${leftNum}`, false);
+        rightPageEl.innerHTML = buildPageMarkup(spread.right, 'End of Folio', `Right Leaf • p. ${rightNum}`, true);
       }
-
-      if (currentSpreadIndex >= spreads.length) {
-        currentSpreadIndex = spreads.length - 1;
-      }
-
-      const currentSpread = spreads[currentSpreadIndex];
-      const leftNum = currentSpread.left ? currentSpread.left.pageNumber : '—';
-      const rightNum = currentSpread.right ? currentSpread.right.pageNumber : '—';
-
-      pageIndicatorEl.textContent = `Pages ${leftNum}${currentSpread.right ? `–${rightNum}` : ''} of ${totalPages}`;
-      pageStatusTextEl.textContent = `Spread ${currentSpreadIndex + 1} of ${spreads.length}`;
-
-      prevPageBtn.disabled = currentSpreadIndex === 0;
-      nextPageBtn.disabled = currentSpreadIndex >= spreads.length - 1;
-
-      leftPageEl.innerHTML = currentSpread.left
-        ? `
-          <div class="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-antiqueGold mb-6">
-            <span>${currentSpread.left.category || 'Publication'}</span>
-            <span>p. ${currentSpread.left.pageNumber}</span>
-          </div>
-          <div class="my-auto space-y-4">
-            <h3 class="font-serif text-3xl text-ink">${currentSpread.left.title || ''}</h3>
-            <p class="font-serif text-lg text-mutedInk leading-relaxed whitespace-pre-line">${currentSpread.left.content || ''}</p>
-          </div>
-          <div class="pt-6 mt-6 border-t border-hairline/70 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-mutedInk">
-            <span>${currentSpread.left.author || 'Parva Via'}</span>
-            <span>${currentSpread.left.pageNumber}</span>
-          </div>
-        `
-        : `<div class="my-auto text-center font-serif italic text-xl text-mutedInk/60">End of Leaf</div>`;
-
-      rightPageEl.innerHTML = currentSpread.right
-        ? `
-          <div class="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-antiqueGold mb-6">
-            <span>${currentSpread.right.category || 'Publication'}</span>
-            <span>p. ${currentSpread.right.pageNumber}</span>
-          </div>
-          <div class="my-auto space-y-4">
-            <h3 class="font-serif text-3xl text-ink">${currentSpread.right.title || ''}</h3>
-            <p class="font-serif text-lg text-mutedInk leading-relaxed whitespace-pre-line">${currentSpread.right.content || ''}</p>
-          </div>
-          <div class="pt-6 mt-6 border-t border-hairline/70 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-mutedInk">
-            <span>${currentSpread.right.author || 'Little Way College Seminary'}</span>
-            <span>${currentSpread.right.pageNumber}</span>
-          </div>
-        `
-        : `<div class="my-auto text-center font-serif italic text-xl text-mutedInk/60">End of Folio</div>`;
     }
 
+    singlePageModeBtn.addEventListener('click', () => {
+      if (!isSpreadMode) return;
+      isSpreadMode = false;
+      currentPageIndex = Math.min(bookPages.length - 1, currentSpreadIndex * 2);
+      singlePageModeBtn.className = 'px-3 py-1.5 bg-ink text-parchment transition-colors';
+      spreadModeBtn.className = 'px-3 py-1.5 text-mutedInk hover:text-ink transition-colors';
+      renderBookView();
+      triggerPageTurnAnimation();
+    });
+
+    spreadModeBtn.addEventListener('click', () => {
+      if (isSpreadMode) return;
+      isSpreadMode = true;
+      currentSpreadIndex = Math.floor(currentPageIndex / 2);
+      spreadModeBtn.className = 'px-3 py-1.5 bg-ink text-parchment transition-colors';
+      singlePageModeBtn.className = 'px-3 py-1.5 text-mutedInk hover:text-ink transition-colors';
+      renderBookView();
+      triggerPageTurnAnimation();
+    });
+
+    pageJumpSelectEl.addEventListener('change', (e) => {
+      const targetIndex = Number(e.target.value);
+      if (Number.isNaN(targetIndex)) return;
+      currentPageIndex = targetIndex;
+      currentSpreadIndex = Math.floor(targetIndex / 2);
+      renderBookView();
+      triggerPageTurnAnimation();
+    });
+
     prevPageBtn.addEventListener('click', () => {
-      if (currentSpreadIndex > 0) {
+      if (!isSpreadMode && currentPageIndex > 0) {
+        currentPageIndex -= 1;
+        renderBookView();
+        triggerPageTurnAnimation();
+      } else if (isSpreadMode && currentSpreadIndex > 0) {
         currentSpreadIndex -= 1;
-        renderBookSpread();
+        currentPageIndex = currentSpreadIndex * 2;
+        renderBookView();
+        triggerPageTurnAnimation();
       }
     });
 
     nextPageBtn.addEventListener('click', () => {
-      const totalSpreads = Math.ceil(bookPages.length / 2);
-      if (currentSpreadIndex < totalSpreads - 1) {
-        currentSpreadIndex += 1;
-        renderBookSpread();
+      if (!isSpreadMode && currentPageIndex < bookPages.length - 1) {
+        currentPageIndex += 1;
+        renderBookView();
+        triggerPageTurnAnimation();
+      } else if (isSpreadMode) {
+        const totalSpreads = Math.ceil(bookPages.length / 2);
+        if (currentSpreadIndex < totalSpreads - 1) {
+          currentSpreadIndex += 1;
+          currentPageIndex = Math.min(bookPages.length - 1, currentSpreadIndex * 2);
+          renderBookView();
+          triggerPageTurnAnimation();
+        }
       }
     });
 
     document.addEventListener('keydown', (e) => {
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.key === 'ArrowLeft') prevPageBtn.click();
       if (e.key === 'ArrowRight') nextPageBtn.click();
     });
 
-    renderBookSpread();
+    renderBookView();
 
     // Shared Backdrop & Drawers
     const drawerBackdrop = document.getElementById('drawerBackdrop');
