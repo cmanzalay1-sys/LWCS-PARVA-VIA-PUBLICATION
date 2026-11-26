@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Google Tag Manager -->
+  <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-TCG5GNDB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+  </script>
+  <!-- End Google Tag Manager -->
   <title>PARVA VIA PUBLICATION — Little Way College Seminary</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -573,7 +581,6 @@
       }
 
       if (!isSpreadMode) {
-        // True 1-Page-at-a-Time Book Reader
         if (currentPageIndex < 0) currentPageIndex = 0;
         if (currentPageIndex >= totalPages) currentPageIndex = totalPages - 1;
 
@@ -590,7 +597,6 @@
         leftPageEl.className = 'p-8 sm:p-12 lg:p-16 flex flex-col justify-between';
         leftPageEl.innerHTML = buildPageMarkup(currentPage, 'Blank Page', `Page ${currentPage.pageNumber}`, false);
       } else {
-        // Optional 2-Page Spread View
         const spreads = [];
         for (let i = 0; i < totalPages; i += 2) {
           spreads.push({
